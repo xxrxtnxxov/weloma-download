@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Weloma Download
 // @namespace    https://github.com/xxrxtnxxov
-// @updateURL    
-// @downloadURL  
+// @updateURL    https://github.com/xxrxtnxxov/weloma-download/blob/main/wd.user.js
+// @downloadURL  https://github.com/xxrxtnxxov/weloma-download/blob/main/wd.user.js
 // @version      2.1
 // @description  Добавляет кнопку скачивания рядом с каждой главой на сайте weloma.art
 // @author       antiQuarianN
