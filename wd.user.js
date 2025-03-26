@@ -1,9 +1,10 @@
 // ==UserScript==
 // @name         Weloma Download
+// @name:en      Weloma Download
 // @namespace    https://github.com/xxrxtnxxov
 // @updateURL    https://github.com/xxrxtnxxov/weloma-download/raw/refs/heads/main/wd.user.js
 // @downloadURL  https://github.com/xxrxtnxxov/weloma-download/raw/refs/heads/main/wd.user.js
-// @version      2.4
+// @version      2.4.1
 // @description  Добавляет кнопку скачивания рядом с каждой главой на сайте weloma.art
 // @description:en  Allows you to download manga chapters in ZIP format from weloma.art.
 // @author       antiQuarianN
