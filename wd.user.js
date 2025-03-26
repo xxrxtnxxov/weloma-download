@@ -3,17 +3,45 @@
 // @namespace    https://github.com/xxrxtnxxov
 // @updateURL    https://github.com/xxrxtnxxov/weloma-download/raw/refs/heads/main/wd.user.js
 // @downloadURL  https://github.com/xxrxtnxxov/weloma-download/raw/refs/heads/main/wd.user.js
-// @version      2.2
+// @version      2.4
 // @description  Добавляет кнопку скачивания рядом с каждой главой на сайте weloma.art
+// @description:en  Allows you to download manga chapters in ZIP format from weloma.art.
 // @author       antiQuarianN
-// @match        https://weloma.art/*/*
+// @match        https://weloma.art/*
 // @grant        GM_xmlhttpRequest
+// @run-at       document-start
 // @require      https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js
 // @license      MIT
 // ==/UserScript==
 
 (function() {
     'use strict';
+
+    Object.defineProperty(window, 'location', {
+        set: () => console.warn('Попытка перенаправления заблокирована!')
+    });
+    window.open = () => console.warn('Попытка открытия нового окна заблокирована!');
+
+    const observer = new MutationObserver(mutations => {
+        mutations.forEach(mutation => {
+            mutation.addedNodes.forEach(node => {
+                if (node.tagName === 'SCRIPT' && /disable-devtool/.test(node.src)) {
+                    node.remove();
+                    console.warn('MEH');
+                }
+            });
+        });
+    });
+    observer.observe(document.documentElement, { childList: true, subtree: true });
+
+    window.addEventListener('contextmenu', e => e.stopPropagation(), true);
+    window.addEventListener('keydown', e => e.stopPropagation(), true);
+
+    const originalSetInterval = window.setInterval;
+    window.setInterval = function(callback, time) {
+        if (time < 1000) return originalSetInterval(callback, 1000);
+        return originalSetInterval(callback, time);
+    };
 
     function addDownloadButton() {
         const chapters = document.querySelectorAll('.list-chapters.at-series a');
@@ -22,17 +50,14 @@
             const chapterNameElement = liElement.querySelector('.chapter-name.text-truncate');
             const chapterTimeElement = liElement.querySelector('.chapter-time');
 
-            // Получаем название манги из <h3 data-heading-tag="H3">
             const mangaTitleElement = document.querySelector('h3[data-heading-tag="H3"]');
             const mangaTitle = mangaTitleElement ? mangaTitleElement.textContent.trim() : "Unknown Manga";
 
-            // Создаем flex-контейнер
             const rowContainer = document.createElement('div');
             rowContainer.style.display = 'flex';
             rowContainer.style.alignItems = 'center';
             rowContainer.style.width = '100%';
 
-            // Создаём кнопку скачивания
             const downloadButton = document.createElement('button');
             downloadButton.style.border = 'none';
             downloadButton.style.background = 'none';
@@ -40,21 +65,18 @@
             downloadButton.style.marginRight = '10px';
             downloadButton.innerHTML = '<img src="https://cdn-icons-png.flaticon.com/512/8358/8358978.png" width="16" height="16" />';
 
-            // Создаём span для отображения прогресса
             const progressSpan = document.createElement('span');
             progressSpan.style.marginRight = '10px';
             progressSpan.style.fontSize = '12px';
             progressSpan.style.color = '#aaa';
             progressSpan.style.display = 'none';
 
-            // Создаём изображение для загрузки (скрыто)
             const loadingImage = document.createElement('img');
-            loadingImage.src = 'https://media.tenor.com/wpSo-8CrXqUAAAAj/loading-loading-forever.gif'; // GIF-анимация
+            loadingImage.src = 'https://media.tenor.com/wpSo-8CrXqUAAAAj/loading-loading-forever.gif';
             loadingImage.style.width = '16px';
             loadingImage.style.height = '16px';
-            loadingImage.style.display = 'none'; // По умолчанию скрыто
+            loadingImage.style.display = 'none';
 
-            // Контейнер для текста (глава + время)
             const textContainer = document.createElement('div');
             textContainer.style.display = 'flex';
             textContainer.style.flexDirection = 'column';
@@ -63,26 +85,20 @@
             textContainer.appendChild(chapterNameElement);
             textContainer.appendChild(chapterTimeElement);
 
-            // Добавляем элементы в flex-контейнер
             rowContainer.appendChild(downloadButton);
             rowContainer.appendChild(progressSpan);
             rowContainer.appendChild(loadingImage);
             rowContainer.appendChild(textContainer);
 
-            // Вставляем обновленный блок в liElement
             liElement.innerHTML = '';
             liElement.appendChild(rowContainer);
 
-            // Обработчик клика
             downloadButton.addEventListener('click', async (event) => {
                 event.preventDefault();
                 const chapterUrl = chapterLink.href;
                 const chapterName = chapterNameElement.textContent.trim();
-                const finalFileName = `${mangaTitle} - ${chapterName}`.replace(/[<>:"/\\|?*]/g, ''); // Очищаем от запрещённых символов
+                const finalFileName = `${mangaTitle} - ${chapterName}`.replace(/[<>:"/\\|?*]/g, '');
 
-                console.log(`Начато скачивание: ${finalFileName}`);
-
-                // Скрываем кнопку, показываем progressSpan
                 downloadButton.style.display = 'none';
                 progressSpan.style.display = 'inline';
                 progressSpan.textContent = '0/?';
@@ -93,60 +109,39 @@
     }
 
     async function downloadChapter(url, finalFileName, progressSpan, downloadButton, loadingImage) {
-        try {
-            const response = await fetch(url);
-            if (!response.ok) throw new Error(`Ошибка загрузки: ${response.status}`);
+        const response = await fetch(url);
+        const htmlText = await response.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(htmlText, 'text/html');
 
-            const htmlText = await response.text();
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(htmlText, 'text/html');
+        const images = doc.querySelectorAll('.chapter-content img.chapter-img');
+        const imageUrls = Array.from(images).map(img => img.getAttribute('data-src') || img.getAttribute('data-srcset') || (img.getAttribute('data-img') && atob(img.getAttribute('data-img')))).filter(Boolean);
 
-            const images = doc.querySelectorAll('.chapter-content img.chapter-img');
-            const imageUrls = Array.from(images).map(img => img.getAttribute('data-src'));
-            progressSpan.textContent = `0/${imageUrls.length}`;
+        progressSpan.textContent = `0/${imageUrls.length}`;
+        const zip = new JSZip();
+        const chapterFolder = zip.folder(finalFileName);
+        const imageBlobs = await loadImages(imageUrls, progressSpan, loadingImage);
 
-            const zip = new JSZip();
-            const chapterFolder = zip.folder(finalFileName);
-            const imageBlobs = await loadImages(imageUrls, progressSpan, loadingImage);
+        imageBlobs.forEach((blob, index) => {
+            const fileName = `00${index + 1}`.slice(-3) + '.jpg';
+            chapterFolder.file(fileName, blob);
+        });
 
-            imageBlobs.forEach((blob, index) => {
-                const fileName = `00${index + 1}`.slice(-3) + '.jpg';
-                chapterFolder.file(fileName, blob);
-            });
+        progressSpan.style.display = 'none';
+        loadingImage.style.display = 'inline';
 
-            console.log(`Создание архива: ${finalFileName}`);
+        const content = await zip.generateAsync({type: 'blob'});
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(content);
+        link.download = `${finalFileName}.zip`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
 
-            // Показываем анимацию загрузки
-            progressSpan.style.display = 'none';
-            loadingImage.style.display = 'inline';
-
-            const content = await zip.generateAsync({type: 'blob'});
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(content);
-            link.download = `${finalFileName}.zip`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-
-            console.log(`Готово: ${finalFileName}.zip`);
-
-            // После скачивания возвращаем кнопку
-            setTimeout(() => {
-                loadingImage.style.display = 'none';
-                downloadButton.style.display = 'inline';
-            }, 1000);
-        } catch (error) {
-            progressSpan.textContent = 'Ошибка!';
-            console.error(`Ошибка при скачивании: ${error.message}`);
-            alert(`Ошибка: ${error.message}`);
-
-            // Вернуть кнопку в случае ошибки
-            setTimeout(() => {
-                progressSpan.style.display = 'none';
-                loadingImage.style.display = 'none';
-                downloadButton.style.display = 'inline';
-            }, 2000);
-        }
+        setTimeout(() => {
+            loadingImage.style.display = 'none';
+            downloadButton.style.display = 'inline';
+        }, 1000);
     }
 
     function loadImages(imageUrls, progressSpan, loadingImage) {
@@ -177,7 +172,6 @@
         progressSpan.textContent = `${loadedCount}/${total}`;
         console.log(`Скачивание: ${loadedCount}/${total}`);
 
-        // Когда скачивание завершено, переключаемся на анимацию
         if (loadedCount === total) {
             progressSpan.style.display = 'none';
             loadingImage.style.display = 'inline';
