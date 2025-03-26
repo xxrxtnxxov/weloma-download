@@ -63,7 +63,7 @@
             downloadButton.style.background = 'none';
             downloadButton.style.cursor = 'pointer';
             downloadButton.style.marginRight = '10px';
-            downloadButton.innerHTML = '<img src="https://cdn-icons-png.flaticon.com/512/8358/8358978.png" width="16" height="16" />';
+            downloadButton.innerHTML = '<img src="https://raw.githubusercontent.com/xxrxtnxxov/weloma-download/refs/heads/main/dload.png" width="16" height="16" />';
 
             const progressSpan = document.createElement('span');
             progressSpan.style.marginRight = '10px';
@@ -72,7 +72,7 @@
             progressSpan.style.display = 'none';
 
             const loadingImage = document.createElement('img');
-            loadingImage.src = 'https://media.tenor.com/wpSo-8CrXqUAAAAj/loading-loading-forever.gif';
+            loadingImage.src = 'https://raw.githubusercontent.com/xxrxtnxxov/weloma-download/refs/heads/main/load.gif';
             loadingImage.style.width = '16px';
             loadingImage.style.height = '16px';
             loadingImage.style.display = 'none';
